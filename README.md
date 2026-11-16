@@ -10,9 +10,9 @@
 
 | 角色 | 页面 | 权限 | 典型动作 |
 |---|---|---|---|
-| admin 复检负责人 | 六页全部 | 写入、排队、说明、批准/退回、分发 | 批注新批独立取样与盲评设计 |
-| analyst 检验分析员 | 六页全部 | 来源/工艺/等级写入、排队、提出说明、下载已批准说明 | 核对并列项及所有组对 |
-| viewer 纸材观察员 | 六页全部 | 只读与已批准CSV下载，写入/审批403 | 阅读边界与分发复检依据 |
+| admin 复检负责人 | 七页全部 | 写入、排队、说明、批准/退回、分发 | 批注新批独立取样与盲评设计 |
+| analyst 检验分析员 | 七页全部 | 来源/工艺/等级写入、排队、提出说明、下载已批准说明 | 核对并列项及所有组对 |
+| viewer 纸材观察员 | 七页全部 | 只读与已批准CSV下载，写入/审批403 | 阅读边界与分发复检依据 |
 
 演示账号 `admin@qingnie.local`、`analyst@qingnie.local`、`viewer@qingnie.local`；共同密码 `Qingnie2026!`。
 
@@ -26,6 +26,7 @@
 6. 09:25 在并列与平均秩页核对Σ(t³−t)=34842，逐份检查合并平均秩。下/上中位位置保留原等级，不把偶数样本插值成3.5级。
 7. 09:35 提出“四工艺独立复检说明”，同时说明拒绝/未拒绝组对、可能的分布形状差异与下一批独立盲评设计。
 8. 10:00 宋槐用admin留批注并同意复检；周予用viewer下载 `followup-note-<id>.csv`，含完整总体、四组摘要与六组对。新数据另建快照，旧结果不回写。
+9. 10:20 盲评陆续到达时，林蘖在持续监测页锁定工艺与α后开一项监测，反复查看全部6组对的有序证据；每组对只配共同前缀，并列计半报告θ，查看次数按6/(π²k²m)分摊整族预算，因此任意停看时刻整族误报仍≤α，不预设总批数。
 
 以上数值来自固定seed真实API/worker结果。seed不预置检验结果，用户需实际排队。
 
@@ -79,13 +80,28 @@ H的p是χ²渐近，Dunn是正态渐近，不是exact。Holm依赖单项p的适
 
 快照按工艺/试样代码规范排序，SHA256覆盖版本、完整输入、alpha；同环境完整复算一致，输入列表顺序不改变整份计算结果。指纹含数据库ID和说明元数据，重建库/修改来源不保证相同指纹。结果同时存数据库和/artifacts/run-<id>.json，全部原始等级、平均秩、并列项与组对可核查。
 
+## 持续监测（盲评陆续到达）
+
+固定样本检验（③④⑤页）保持原样：一次冻结、一次计算。持续监测是并行的第二个分析入口，回答“边到边看”的问题，不覆盖也不回写固定样本结果。
+
+- **开始前锁定**：登记监测时锁定当前研究的2–5个工艺、组对方向与α；之后新增工艺不进入本监测，锁定计划有指纹与锁定时间。每组至少已有1份试样才可开始。同一研究同时只允许一项进行中的监测，避免把查看预算拆到多项监测里重复使用；停看后可另立监测，新计划会记录延续自哪几项，但α预算重新起算。
+- **只配共同前缀，每份只用一次**：每个工艺内按试样入库顺序（reading.id）排队，组对 (i,j) 使用两边共同前缀 min(nᵢ,nⱼ) 份、第r份对第r份。多出的试样不进入该组对，页面按编号列出等待配齐的试样；它们等其余工艺补齐后进入下一次查看。
+- **有序等级的优胜证据**：θ = (W + T/2)/m，即左工艺等级更高的份额，并列计半；ψ = (W−L)/m。证据本身用精确符号检验（W 对 L，并列不计方向，条件在非并列份数上服从Binomial(n,½)），不依赖渐近正态。全部k(k−1)/2组对始终列出，未达α也不会被隐藏。
+- **任意停看时刻的整族误报**：查看序号k在开始时即计入预算，第k回、m个组对中每个组对可分 alpha·6/(π²k²m)；对全部查看与全部组对求和恰为α。因此无论查看多少次、在何时停看（停看时刻可依赖已见数据），整族至少一次误报的概率≤α；不预设总批数，后续取样可依据已有结果调整。查看越多，后续每回的预算越小，这是代价。
+- **源数据更正**：读数改动使输入指纹变化，旧查看证据原样留档但标记失效，下一次查看按当前输入重算并计新的查看序号。停看后若源数据又被更正：停看结论保留原文，同时明确标为失效，不能代表当前输入；需要新证据另立监测。
+- **中断恢复与完整重放**：每次查看保存锁定计划、读数快照、查看序号与完整证据。监测页“完整重放校验”按保存快照重算全部查看，逐字节比对；证据不含时间戳与随机数，同一输入重放一致。中断后重试同一回若输入未变则幂等返回，不重复消耗预算。
+- **页面可推进、停看与追查**：记录下一回查看即推进；停看需填写说明并保留第k回结论；追查页可看任一组对逐份配齐时的W/L/T、θ、ψ与原始符号p，并列出该组对中仍在等待的试样编号。
+- **边界**：控制的是整族误报率，不是估计偏差；等级仍非等距，Dunn/KW的分布形状说明同样适用；符号检验只比较方向，不给出等级单位的效应。配对方式是按到达顺序的位置配对，不是同一样本重复测量；若到达顺序与批次相关，需要由盲评与制备设计控制。
+
+新增接口：`GET/POST /monitors`、`GET /monitors/{id}`、`POST /monitors/{id}/looks`、`GET /monitors/{id}/looks[/{k}]`、`POST /monitors/{id}/stop`、`GET /monitors/{id}/status|locking|replay|trace`。表结构见 `backend/migrations/002_sequential.sql`，metadata.create_all 会补建缺表。
+
 ## 代码与本地开发
 
-五个实体GradeStudy、Treatment、GradeReading、RankTestRun、FollowupNote各自贯穿model/schema/service/controller/route/API。studyStore、measurementsStore、researchStore承接对应状态；六页为总览、来源、配置、结果、说明、审计，登录另计。GradeDots复用于总览/结果，PairFamilyTable复用于结果/说明；共享PageHeading、StatusBadge、ErrorNotice、StudySelect、RunSelect，hooks useTask/usePolling、format工具。所有宽图/表局部滚动，grid显式minmax(0,1fr)/min-width:0；结果工艺选择按真实已加载组同步。
+五个实体GradeStudy、Treatment、GradeReading、RankTestRun、FollowupNote各自贯穿model/schema/service/controller/route/API。studyStore、measurementsStore、researchStore、monitorsStore承接对应状态；七页为总览、来源、配置、结果、说明、审计、持续监测，登录另计。GradeDots复用于总览/结果，PairFamilyTable复用于结果/说明，MonitorPairTable用于持续监测；共享PageHeading、StatusBadge、ErrorNotice、StudySelect、RunSelect，hooks useTask/usePolling、format工具。所有宽图/表局部滚动，grid显式minmax(0,1fr)/min-width:0；结果工艺选择按真实已加载组同步。
 
-目录：backend/src/{models,schemas,services,controllers,routes,config,constants,middlewares,utils}；数学services/{rank_pool,dunn,rank_inference}.py；backend/scripts/seed_demo.py与migrations/001_initial.sql。frontend/src/{api,stores,types,constants,components/common,hooks,pages,router,utils}。
+目录：backend/src/{models,schemas,services,controllers,routes,config,constants,middlewares,utils}；数学services/{rank_pool,dunn,rank_inference,sequential}.py；持续监测service/monitor_service.py；backend/scripts/seed_demo.py与migrations/001_initial.sql。frontend/src/{api,stores,types,constants,components/common,hooks,pages,router,utils}。
 
-Role/RunStatus/NoteStatus前后端分别定义于backend/src/constants/enums.py和frontend/src/constants/enums.ts，角色类型在types/domain.ts；RunStatus用于运行service/worker，NoteStatus用于schema/service，前端用于状态与账户/页面。等级枚举1–9在前端constants/enums.ts，后端schemas/reading.py与rank_inference.py严格校验。
+Role/RunStatus/NoteStatus/MonitorStatus前后端分别定义于backend/src/constants/enums.py和frontend/src/constants/enums.ts，角色类型在types/domain.ts；RunStatus用于运行service/worker，NoteStatus用于schema/service，前端用于状态与账户/页面。等级枚举1–9在前端constants/enums.ts，后端schemas/reading.py与rank_inference.py严格校验。
 
 ```bash
 docker compose up -d db redis

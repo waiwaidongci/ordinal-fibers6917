@@ -1,0 +1,12 @@
+from src.services import monitor_service as service
+def index(db):return service.list_monitors(db)
+def create(db,data,user):return service.create_monitor(db,data,user)
+def detail(db,id):return service.get_monitor(db,id)
+def look(db,id,user,look_index=None):return service.record_look(db,id,user,look_index)
+def looks(db,id):return service.list_looks(db,id)
+def look_detail(db,id,look_index):return service.get_look(db,id,look_index)
+def stop(db,id,data,user):return service.stop_monitor(db,id,data,user)
+def status(db,id):return service.staleness(db,service.get_monitor(db,id))
+def locking(db,id):return service.locking_status(db,service.get_monitor(db,id))
+def replay(db,id):return service.replay(db,id)
+def trace(db,id,pair_key,step):return service.trace(db,id,pair_key,step)

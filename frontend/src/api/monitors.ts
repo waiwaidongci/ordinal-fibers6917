@@ -1,0 +1,10 @@
+import {request,post} from './client';import type {Monitor,MonitorLook,MonitorStatus,MonitorLocking,MonitorReplay,MonitorTrace} from '../types/domain';
+export const list=()=>request<Monitor[]>('/monitors');
+export const create=(data:unknown)=>post<Monitor>('/monitors',data);
+export const look=(id:number,lookIndex?:number)=>post<MonitorLook>('/monitors/'+id+'/looks'+(lookIndex?('?look_index='+lookIndex):''),{});
+export const looks=(id:number)=>request<MonitorLook[]>('/monitors/'+id+'/looks');
+export const stop=(id:number,note:string)=>post<Monitor>('/monitors/'+id+'/stop',{note});
+export const status=(id:number)=>request<MonitorStatus>('/monitors/'+id+'/status');
+export const locking=(id:number)=>request<MonitorLocking>('/monitors/'+id+'/locking');
+export const replay=(id:number)=>request<MonitorReplay>('/monitors/'+id+'/replay');
+export const trace=(id:number,pair:string,step:number)=>request<MonitorTrace>('/monitors/'+id+'/trace?pair='+encodeURIComponent(pair)+'&step='+step);

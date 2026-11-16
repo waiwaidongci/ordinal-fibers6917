@@ -1,1 +1,1 @@
-<script setup lang="ts">import {runStatus,noteStatus} from '../../constants/enums';defineProps<{status:string}>();const labels:Record<string,string>={...runStatus,...noteStatus}</script><template><span :class="['status',status]">{{labels[status]||status}}</span></template>
+<script setup lang="ts">import {runStatus,noteStatus,monitorStatus} from '../../constants/enums';defineProps<{status:string}>();const labels:Record<string,string>={...runStatus,...noteStatus,...monitorStatus}</script><template><span :class="['status',status]">{{labels[status]||status}}</span></template>
